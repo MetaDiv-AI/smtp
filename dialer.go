@@ -2,7 +2,6 @@ package smtp
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"strings"
 
@@ -37,7 +36,10 @@ func (d *Dialer) Send(email *Email) error {
 
 func (d *Dialer) buildMessage(m *Email) (*mail.Message, error) {
 	msg := mail.NewMessage()
-	msg.SetHeader("From", d.sender())
+	// Use SetAddressHeader instead of SetHeader for From field to properly handle
+	// non-ASCII display names (e.g. Chinese). SetHeader encodes the entire string
+	// which breaks net/mail.ParseAddress when extracting the address for SMTP.
+	msg.SetAddressHeader("From", d.Username, d.DisplayName)
 	msg.SetHeader("To", m.To...)
 	msg.SetHeader("Cc", m.Cc...)
 	msg.SetHeader("Bcc", m.Bcc...)
@@ -75,11 +77,4 @@ func (d *Dialer) buildMessage(m *Email) (*mail.Message, error) {
 		)
 	}
 	return msg, nil
-}
-
-func (d *Dialer) sender() string {
-	if d.DisplayName == "" {
-		return d.Username
-	}
-	return fmt.Sprintf("%s <%s>", d.DisplayName, d.Username)
 }
